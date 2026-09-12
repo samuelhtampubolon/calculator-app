@@ -1,3 +1,5 @@
+import ast
+import operator
 import tkinter as tk
 from tkinter import font
 
@@ -18,6 +20,70 @@ STRINGS = {
 
 # Reverse lookup so language switch can re-translate a visible error
 ERROR_TEXTS = {v["error"] for v in STRINGS.values()} | {v["div0"] for v in STRINGS.values()}
+
+# --- Security: safe arithmetic evaluator (replaces eval) ---
+# Only digits and + - * / % ( ) are accepted. No names, calls, attributes,
+# subscripts, or any other syntax can execute. Idea: parse to AST, whitelist
+# node types, then evaluate with the operator module.
+MAX_EXPR_LEN = 100
+MAX_DIGITS_PER_NUMBER = 15
+
+_BIN_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+}
+_UNARY_OPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+
+def _eval_node(node):
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+            raise ValueError("number expected")
+        return node.value
+    if isinstance(node, ast.BinOp):
+        op = _BIN_OPS.get(type(node.op))
+        if op is None:
+            raise ValueError("operator not allowed")
+        return op(_eval_node(node.left), _eval_node(node.right))
+    if isinstance(node, ast.UnaryOp):
+        op = _UNARY_OPS.get(type(node.op))
+        if op is None:
+            raise ValueError("operator not allowed")
+        return op(_eval_node(node.operand))
+    raise ValueError("expression not allowed")
+
+
+def safe_eval(expr):
+    """Evaluate a simple arithmetic expression. Raises ValueError/ZeroDivisionError."""
+    if not isinstance(expr, str):
+        raise ValueError("expression not allowed")
+    text = expr.strip()
+    if not text or len(text) > MAX_EXPR_LEN:
+        raise ValueError("expression not allowed")
+    if "**" in text:  # power operator is not part of this calculator; blocks DoS like 9**9**9
+        raise ValueError("operator not allowed")
+    tree = ast.parse(text, mode="eval")
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Call, ast.Name, ast.Attribute, ast.Subscript,
+                             ast.Starred, ast.IfExp, ast.Compare, ast.BoolOp,
+                             ast.Lambda, ast.ListComp, ast.GeneratorExp)):
+            raise ValueError("expression not allowed")
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            digits = "".join(ch for ch in repr(abs(node.value)) if ch.isdigit())
+            if len(digits) > MAX_DIGITS_PER_NUMBER:
+                raise ValueError("number too long")
+    result = _eval_node(tree)
+    if isinstance(result, float) and result.is_integer():
+        result = int(result)
+    return result
 
 
 class Calculator(tk.Tk):
@@ -139,7 +205,7 @@ class Calculator(tk.Tk):
     def negate(self):
         try:
             if self.expression:
-                val = eval(self.expression, {"__builtins__": {}})
+                val = safe_eval(self.expression)
                 self.expression = str(-val)
         except Exception:
             self.display_var.set(self.t("error"))
@@ -147,11 +213,11 @@ class Calculator(tk.Tk):
 
     def calculate(self):
         try:
-            # safe eval: only allow numbers and operators
+            # safe evaluation: charset allowlist (defense in depth) + AST evaluator
             allowed = set("0123456789+-*/.%() ")
             if not set(self.expression) <= allowed or not self.expression:
                 return
-            result = eval(self.expression, {"__builtins__": {}})
+            result = safe_eval(self.expression)
             # clean up float display
             if isinstance(result, float) and result.is_integer():
                 result = int(result)

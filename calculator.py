@@ -1,15 +1,58 @@
 import tkinter as tk
 from tkinter import font
 
+STRINGS = {
+    "en": {
+        "title": "Calculator",
+        "error": "Error",
+        "div0": "Can't divide by 0",
+        "lang_label": "Language / Bahasa:",
+    },
+    "id": {
+        "title": "Kalkulator",
+        "error": "Kesalahan",
+        "div0": "Tidak bisa dibagi 0",
+        "lang_label": "Bahasa / Language:",
+    },
+}
+
+# Reverse lookup so language switch can re-translate a visible error
+ERROR_TEXTS = {v["error"] for v in STRINGS.values()} | {v["div0"] for v in STRINGS.values()}
+
+
 class Calculator(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Calculator")
-        self.geometry("320x450")
+        self.lang = tk.StringVar(value="en")
+        self.geometry("320x490")
         self.resizable(False, False)
         self.configure(bg="#1e1e1e")
 
         self.expression = ""
+
+        # --- Language switcher (bilingual EN / ID) ---
+        lang_frame = tk.Frame(self, bg="#1e1e1e")
+        lang_frame.pack(fill="x", padx=10, pady=(10, 0))
+
+        self.lang_label = tk.Label(
+            lang_frame, bg="#1e1e1e", fg="#cccccc",
+            font=("Segoe UI", 10)
+        )
+        self.lang_label.pack(side="left")
+
+        self.btn_en = tk.Button(
+            lang_frame, text="EN", font=("Segoe UI", 10, "bold"),
+            relief="flat", bd=0, padx=10,
+            command=lambda: self.set_lang("en")
+        )
+        self.btn_en.pack(side="right", padx=(4, 0))
+
+        self.btn_id = tk.Button(
+            lang_frame, text="ID", font=("Segoe UI", 10, "bold"),
+            relief="flat", bd=0, padx=10,
+            command=lambda: self.set_lang("id")
+        )
+        self.btn_id.pack(side="right")
 
         # Display
         self.display_var = tk.StringVar(value="0")
@@ -48,6 +91,32 @@ class Calculator(tk.Tk):
             btn_frame.grid_columnconfigure(i, weight=1)
 
         self.bind("<Key>", self.on_key)
+        self.set_lang("en")
+
+    def t(self, key):
+        return STRINGS[self.lang.get()][key]
+
+    def set_lang(self, lang):
+        # Re-translate visible error message if one is showing
+        current = self.display_var.get()
+        self.lang.set(lang)
+        self.title(self.t("title"))
+        self.lang_label.config(text=self.t("lang_label"))
+        if current in ERROR_TEXTS:
+            if current in {v["div0"] for v in STRINGS.values()}:
+                self.display_var.set(self.t("div0"))
+            else:
+                self.display_var.set(self.t("error"))
+        # Highlight active language button
+        active_bg, inactive_bg = "#0078d4", "#333333"
+        self.btn_en.config(
+            bg=active_bg if lang == "en" else inactive_bg, fg="white",
+            activebackground=active_bg if lang == "en" else "#505050",
+        )
+        self.btn_id.config(
+            bg=active_bg if lang == "id" else inactive_bg, fg="white",
+            activebackground=active_bg if lang == "id" else "#505050",
+        )
 
     def refresh(self):
         self.display_var.set(self.expression if self.expression else "0")
@@ -73,7 +142,7 @@ class Calculator(tk.Tk):
                 val = eval(self.expression, {"__builtins__": {}})
                 self.expression = str(-val)
         except Exception:
-            self.display_var.set("Error")
+            self.display_var.set(self.t("error"))
             self.expression = ""
 
     def calculate(self):
@@ -88,11 +157,11 @@ class Calculator(tk.Tk):
                 result = int(result)
             self.expression = str(result)
         except ZeroDivisionError:
-            self.display_var.set("Can't divide by 0")
+            self.display_var.set(self.t("div0"))
             self.expression = ""
             return
         except Exception:
-            self.display_var.set("Error")
+            self.display_var.set(self.t("error"))
             self.expression = ""
             return
 

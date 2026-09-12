@@ -1,22 +1,30 @@
-# Calculator App
+# Calculator App / Aplikasi Kalkulator
 
 Simple desktop calculator built with Python + Tkinter, packaged as a Windows `.exe` with PyInstaller.
+Kalkulator desktop sederhana dengan Python + Tkinter, dikemas sebagai `.exe` Windows dengan PyInstaller.
 
-## Features
-- Basic ops: `+ - × ÷ % ± . C ⌫ =`
-- Keyboard support: `0-9 + - * / % ( )`, `Enter` = equals, `Backspace` = delete, `Esc` = clear
-- Dark theme GUI
-- Error handling (e.g. divide by zero)
+Bilingual: English / Bahasa Indonesia — switch with EN / ID buttons at the top.
+Dwibahasa: Inggris / Bahasa Indonesia — ganti dengan tombol EN / ID di atas.
 
-## Run from source
+## Features / Fitur
+- Basic ops / Operasi dasar: `+ - × ÷ % ± . C ⌫ =`
+- Keyboard support / Dukungan keyboard: `0-9 + - * / % ( )`, `Enter` = equals / sama dengan, `Backspace` = delete / hapus, `Esc` = clear / bersihkan
+- Dark theme GUI / Tampilan gelap
+- Bilingual UI: title + errors / UI dwibahasa: judul + pesan kesalahan
+  - EN: `Calculator`, `Error`, `Can't divide by 0`
+  - ID: `Kalkulator`, `Kesalahan`, `Tidak bisa dibagi 0`
+- Error handling / Penanganan kesalahan (e.g. divide by zero / contoh pembagian nol)
+
+## Run from source / Jalankan dari source
 ```bash
 python calculator.py
 ```
 
-## Run exe
+## Run exe / Jalankan exe
 Double-click `dist/Calculator.exe` (no Python needed).
+Klik dua kali `dist/Calculator.exe` (tanpa Python).
 
-## Build exe
+## Build exe / Bangun exe
 ```bash
 pip install pyinstaller
 pyinstaller --noconfirm --onefile --windowed --name Calculator calculator.py
